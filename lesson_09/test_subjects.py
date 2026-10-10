@@ -33,20 +33,18 @@ def test_add_subject():
 
 
 def test_update_subject():
-    with engine.connect() as connection:
-        transaction = connection.begin()
+    with engine.begin() as connection:
+        result = connection.execute(
+            text(
+                'INSERT INTO "предметы" ("название") '
+                'VALUES (:name) RETURNING id'
+            ),
+            {"name": "Физика"}
+        )
+
+        subject_id = result.scalar_one()
 
         try:
-            result = connection.execute(
-                text(
-                    'INSERT INTO "предметы" ("название") '
-                    'VALUES (:name) RETURNING id'
-                ),
-                {"name": "Физика"}
-            )
-
-            subject_id = result.scalar_one()
-
             connection.execute(
                 text(
                     'UPDATE "предметы" '
@@ -67,24 +65,25 @@ def test_update_subject():
             assert result.scalar_one() == "Химия"
 
         finally:
-            transaction.rollback()
+            connection.execute(
+                text('DELETE FROM "предметы" WHERE id = :id'),
+                {"id": subject_id}
+            )
 
 
 def test_delete_subject():
-    with engine.connect() as connection:
-        transaction = connection.begin()
+    with engine.begin() as connection:
+        result = connection.execute(
+            text(
+                'INSERT INTO "предметы" ("название") '
+                'VALUES (:name) RETURNING id'
+            ),
+            {"name": "Биология"}
+        )
+
+        subject_id = result.scalar_one()
 
         try:
-            result = connection.execute(
-                text(
-                    'INSERT INTO "предметы" ("название") '
-                    'VALUES (:name) RETURNING id'
-                ),
-                {"name": "Биология"}
-            )
-
-            subject_id = result.scalar_one()
-
             connection.execute(
                 text(
                     'DELETE FROM "предметы" WHERE id = :id'
@@ -102,4 +101,7 @@ def test_delete_subject():
             assert result.scalar_one_or_none() is None
 
         finally:
-            transaction.rollback()
+            connection.execute(
+                text('DELETE FROM "предметы" WHERE id = :id'),
+                {"id": subject_id}
+            )
