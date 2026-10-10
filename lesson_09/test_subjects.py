@@ -3,20 +3,18 @@ from db_config import engine
 
 
 def test_add_subject():
-    with engine.connect() as connection:
-        transaction = connection.begin()
+    with engine.begin() as connection:
+        result = connection.execute(
+            text(
+                'INSERT INTO "предметы" ("название") '
+                'VALUES (:name) RETURNING id'
+            ),
+            {"name": "Тестовый предмет"}
+        )
+
+        subject_id = result.scalar_one()
 
         try:
-            result = connection.execute(
-                text(
-                    'INSERT INTO "предметы" ("название") '
-                    'VALUES (:name) RETURNING id'
-                ),
-                {"name": "Тестовый предмет"}
-            )
-
-            subject_id = result.scalar_one()
-
             result = connection.execute(
                 text(
                     'SELECT "название" FROM "предметы" '
@@ -28,7 +26,10 @@ def test_add_subject():
             assert result.scalar_one() == "Тестовый предмет"
 
         finally:
-            transaction.rollback()
+            connection.execute(
+                text('DELETE FROM "предметы" WHERE id = :id'),
+                {"id": subject_id}
+            )
 
 
 def test_update_subject():
